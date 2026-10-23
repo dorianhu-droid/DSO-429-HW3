@@ -9,7 +9,7 @@ computed in Python and matched to the closest option. No API key needed.
 
 Usage (run from inside your DSO-429-HW3 repo folder):
     python3 solve.py --check        # score yourself against practice keys 1-48
-    python3 solve.py                # write any missing round files
+    python3 solve.py                # write missing or out-of-date round files
     python3 solve.py --push         # write missing files, then git commit + push
     python3 solve.py --all --push   # rewrite every round file, then push
 """
@@ -24,7 +24,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-BASE = "https://raw.githubusercontent.com/FaisalXL/dso429-hourly-quiz/main/"
+BASE = "https://raw.githubusercontent.com/FaisalXL/dso429-hourly-quiz-2/main/"
 QUESTIONS_URL = BASE + "questions.csv"
 KEYS_URL = BASE + "practice_keys.csv"
 LETTERS = "ABCD"
@@ -213,13 +213,16 @@ def main():
     written = []
     for rid in sorted(rounds):
         path = out_dir / f"round-{rid:04d}.json"
-        if path.exists() and not args.all:
-            continue
         if len(rounds[rid]) != 25:
             print(f"round {rid}: only {len(rounds[rid])} questions so far, skipping")
             continue
         answers, unsure = solve_round(rounds[rid])
-        path.write_text(json.dumps({"round_id": rid, "answers": answers}, indent=2) + "\n")
+        content = json.dumps({"round_id": rid, "answers": answers}, indent=2) + "\n"
+        # Skip only if the file already holds exactly these answers; a stale or
+        # wrong file gets overwritten.
+        if path.exists() and path.read_text() == content and not args.all:
+            continue
+        path.write_text(content)
         written.append(path)
         for u in unsure:
             print(f"round {rid} needs a look -> {u}")
